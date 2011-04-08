@@ -1,77 +1,179 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset='utf-8'>
+<meta charset='utf-8'>
+<title>Visualisierung der Rheinsteig-Routen</title>
 
-  <title>tordans/RheinsteigVisualizationMap @ GitHub</title>
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/jquery.csv.js"></script>
+<script type="text/javascript" src="js/jquery.getParams.js"></script>
+<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;sensor=false&amp;key=ABQIAAAAzr2EBOXUKnm_jVnk0OJI7xSosDVG8KKPE1-m51RBrvYughuyMxQ-i1QfUnH94QxWIa6N4U6MouMmBA" type="text/javascript"></script>
 
-  <style type="text/css">
-    body {
-      margin-top: 1.0em;
-      background-color: #35bd70;
-      font-family: Helvetica, Arial, FreeSans, san-serif;
-      color: #ffffff;
-    }
-    #container {
-      margin: 0 auto;
-      width: 700px;
-    }
-    h1 { font-size: 3.8em; color: #ca428f; margin-bottom: 3px; }
-    h1 .small { font-size: 0.4em; }
-    h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #ca428f; }
-    h3 { text-align: center; color: #ca428f; }
-    a { color: #ca428f; }
-    .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
-    .download { float: right; }
-    pre { background: #000; color: #fff; padding: 15px;}
-    hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
-    .footer { text-align:center; padding-top:30px; font-style: italic; }
-  </style>
+<style type="text/css">
+  body {
+    font-family: sans-serif;
+  }
+  .legende {
+    margin-bottom: 10px;
+  }
+  .legende a {
+    margin: 2px 3px;
+    display: inline-block;
+    border: 2px solid #ccc;
+  }
+  .legende a:hover {
+    border-color: black;
+  }
+  .legende a, .legende span {
+    padding: 3px 0px;
+    -webkit-border-radius:  7px;
+    -moz-border-radius:     7px;
+    border-radius:          7px;
+  }
+  .legende span {
+    padding: 3px 2px;
+  }
+</style>
+
 </head>
+<body onload="initialize()" onunload="GUnload()">
 
-<body>
-  <a href="http://github.com/tordans/RheinsteigVisualizationMap"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+<div class="legende">
+  Anzeigen:
+  <a href="?erlebnis=ja&amp;kondition=nein&amp;technik=nein">
+    <span class="fun">Erlebnis</span>
+  </a>
+  <a href="?erlebnis=nein&amp;kondition=ja&amp;technik=nein">
+    <span class="fitness">Kondition</span>
+  </a>
+  <a href="?erlebnis=nein&amp;kondition=nein&amp;technik=ja">
+    <span class="technics">Technik</span>
+  </a>
+  <br />
+  <a href="?erlebnis=ja&amp;kondition=ja&amp;technik=ja">
+    <span class="fun">Erlebnis</span><span class="fitness">Kondition</span><span class="technics">Technik</span>
+  </a>
+  <a href="?erlebnis=ja&amp;kondition=ja&amp;technik=nein">
+    <span class="fun">Erlebnis</span><span class="fitness">Kondition</span>
+  </a>
+  <a href="?erlebnis=ja&amp;kondition=nein&amp;technik=ja">
+    <span class="fun">Erlebnis</span><span class="technics">Technik</span>
+  </a>
+  <a href="?erlebnis=nein&amp;kondition=ja&amp;technik=ja">
+    <span class="fitness">Kondition</span><span class="technics">Technik</span>
+  </a>
+</div>
 
-  <div id="container">
+<div id="rheinsteig_karte" style="width: 1000px; height: 700px"></div>
 
-    <div class="download">
-      <a href="http://github.com/tordans/RheinsteigVisualizationMap/zipball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
-      <a href="http://github.com/tordans/RheinsteigVisualizationMap/tarball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
-    </div>
+<script type="text/javascript">
 
-    <h1><a href="http://github.com/tordans/RheinsteigVisualizationMap">RheinsteigVisualizationMap</a>
-      <span class="small">by <a href="http://github.com/tordans">tordans</a></span></h1>
+// Daten-Quelle:
+// Google Spreadsheet: https://spreadsheets.google.com/ccc?pli=1&hl=de&hl=de&key=tiBlPIh__cY04XHsWbnyGWA&authkey=CJ3J0ZkE#gid=0
+// Die Daten aus dem Spreadsheet basieren auf http://www.rheinsteig.de/etappentourenplaner/siebengebirge/ (etc.)
+// CSV-Download über GoogleSpreadsheet: https://spreadsheets.google.com/pub?hl=de&hl=de&key=0Av1igPBLCZG2dGlCbFBJaF9fY1kwNFhIc1dibnlHV0E&single=true&gid=0&output=csv
 
-    <div class="description">
-      Visualisiert die Wanderroute "Rheinsteig" anhand der Kriterien Erlebnis, Kondition und Technik auf einer Karte. Je breiter die Linie, desto "besser" ist der Abschnitt bewertet.
-    </div>
+// Leider habe ich es nicht geschafft das Spreadsheet direkt als Datenquelle für jQuery zu nutzen, daher der Workaround.
+// Vorgehen: CSV-Spreadsheet-URL oben aufrufen, Download, Zeilenumbrüche ersetzten durch "\n", dann hier einfügen, dreifache Anführungsstriche ersetzen, fertig
 
-    <h2>Authors</h2>
-<p>Tobias Jordans (t@tobiasjordans.de)<br/><br/>      </p>
-<h2>Contact</h2>
-<p>Tobias (t@tobiasjordans.de)<br/>      </p>
+// Spaltenbeschriftung:
+// Routennummer,Start,Start_Lat,Start_Long,Ziel,Ziel_Lat,Ziel_Long,Dauer,Länge (km),Kondition ,Technik ,Erlebniswert ,Höhenprofil-Bild,Region,URL\n
+var rheinsteigCSV = '1,Bonn,50.73270,7.09631,Niederdollendorf,50.69517,7.18107,03:30 Std. ,13,2,1,4,,Siebengebirge,http://www.rheinsteig.de/etappentourenplaner/siebengebirge/\n2,Niederdollendorf,50.69517,7.18107,Königswinter,50.67342,7.19472,03:00 Std.,9,3,2,4,,Siebengebirge\n3,Königswinter,50.67342,7.19472,Bad Honnef,50.64540,7.22583,04:00 Std.,"13,5",4,2,5,,Siebengebirge\n4,Bad Honnef [1],50.64540,7.22583,Unkel,50.59644,7.21886,03:00 Std.,"9,5",2,2,3,,Siebengebirge\n5,Unkel,50.59644,7.21886,Leubsdorf,50.54605,7.28771,04:30 Std.,14,4,3,5,http://www.rheinsteig.de/uploads/pics/profil-5.gif,Unteren Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/unteres-mittelrheintal/\n6,Leubsdorf,50.54605,7.28771,Rheinbrohl,50.49555,7.33486,04:30 Std. ,"14,5",3,3,4,http://www.rheinsteig.de/uploads/pics/profil-6.gif,Unteren Mittelrheintal\n7,Rheinbrohl,50.49555,7.33486,Leutesdorf,50.45331,7.38623,03:30 Std.,13,3,3,3,http://www.rheinsteig.de/uploads/pics/profil-7.gif,Unteren Mittelrheintal\n8,Leutesdorf,50.45331,7.38623,Rengsdorf,50.50289,7.49421,06:00 Std. ,19,5,2,4,http://www.rheinsteig.de/uploads/pics/profil-8.gif,Unteren Mittelrheintal\n9,Rengsdorf,50.50289,7.49421,Sayn,50.43819,7.57622,03:30 Std.,13,3,2,4,http://www.rheinsteig.de/uploads/pics/profil-9.gif,Unteren Mittelrheintal\n10,Sayn,50.43819,7.57622,Vallendar,50.39976,7.61755,04:00 Std.,13,3,2,3,http://www.rheinsteig.de/uploads/pics/profil-10.gif,Unteren Mittelrheintal\n11,Vallendar,50.39976,7.61755,Koblenz-Ehrenbreitstein,50.36011,7.61669,03:00 Std.,9,1,2,3,http://www.rheinsteig.de/uploads/pics/profil-11.gif,Oberes Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/oberes-mittelrheintal/\n12,Koblenz-Ehrenbreitstein,50.36011,7.61669,Niederlahnstein,50.31679,7.59953,04:30 Std.,"13,5",3,5,5,,Oberes Mittelrheintal\n13, Niederlahnstein,50.31679,7.59953,Braubach,50.27478,7.64965,03:00 Std.,"8,5",2,4,3,,Oberes Mittelrheintal\n14, Braubach,50.27478,7.64965,Osterspai,50.24488,7.61873,04:00 Std.,"11,5",3,3,4,,Oberes Mittelrheintal\n15, Osterspai,50.24488,7.61873,Kestert,50.18738,7.64796,05:30 Std.,17,5,4,5,,Oberes Mittelrheintal\n16, Kestert,50.18738,7.64796,St. Goarshausen,50.15537,7.71498,04:00 Std.,12,4,3,4,,Oberes Mittelrheintal\n17, St. Goarshausen,50.15537,7.71498,Kaub,50.08802,7.76230,07:00 Std.,22,6,4,6,,Oberes Mittelrheintal\n18, Kaub,50.08802,7.76230,Lorch,50.04700,7.80235,04:30 Std.,"13,5",3,2,4,,Oberes Mittelrheintal\n19, Lorch,50.04700,7.80235,Rüdesheim,49.97891,7.92639,06:30 Std.,20,4,3,5,,Oberes Mittelrheintal\n20, Rüdesheim,49.97891,7.92639,Johannisberg,49.98291,7.98414,04:00 Std.,13,4,3,4,,Rheingau,http://www.rheinsteig.de/etappentourenplaner/rheingau/\n21, Johannisberg,49.98291,7.98414,Kloster Eberbach,50.00972,8.06980,03:30 Std.,11,2,2,4,,Rheingau\n22, Kloster Eberbach,50.00972,8.06980,Schlangenbad,50.09422,8.10315,04:30 Std.,14,3,2,3,,Rheingau\n23, Schlangenbad,50.09422,8.10315,Wiesbaden-Biebrich,50.04485,8.24105,04:00 Std.,"16,5",4,2,3,,Rheingau';
 
 
-    <h2>Download</h2>
-    <p>
-      You can download this project in either
-      <a href="http://github.com/tordans/RheinsteigVisualizationMap/zipball/master">zip</a> or
-      <a href="http://github.com/tordans/RheinsteigVisualizationMap/tarball/master">tar</a> formats.
-    </p>
-    <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
-      by running:
-      <pre>$ git clone git://github.com/tordans/RheinsteigVisualizationMap</pre>
-    </p>
+    // jQuery-CSV-Parser: http://plugins.jquery.com/project/csv
+    //    http://code.google.com/p/js-tables/wiki/CSV
+    //    http://www.s-anand.net/csv
+var rheinsteig = jQuery.csv()(rheinsteigCSV),
+    map,
+    funPolylines = [],
+    technicsPolylines = [],
+    fitnessPolylines = [],
+    // thx @ http://bueltge.de/parameter-aus-url-auslesen-mit-jquery/464/
+    showFun = $.getURLParam('erlebnis'),
+    showTechnics = $.getURLParam('technik'),
+    showFitness = $.getURLParam('kondition'),
+    funColor = "#ff0000",
+    technicsColor = "green",
+    fitnessColor = "navy";
 
-    <div class="footer">
-      get the source code on GitHub : <a href="http://github.com/tordans/RheinsteigVisualizationMap">tordans/RheinsteigVisualizationMap</a>
-    </div>
+// Default: Alle anzeigen.
+if(!showFun && !showTechnics && !showFitness) {
+  showFun = showTechnics = showFitness = "ja";
+}
 
-  </div>
+// Farbgebung für Legende
+$('span.fun').css('background-color', funColor);
+$('span.technics').css('background-color', technicsColor);
+$('span.fitness').css('background-color', fitnessColor);
 
-  
+// Linien-Dicke anpassen basierend auf der Bewertung
+function boost(int) {
+  return int*int*2;
+}
+
+// Google Map-Magic
+// thx @ http://code.google.com/intl/de-DE/apis/maps/documentation/javascript/v2/examples/index.html
+// thx @ http://code.google.com/intl/de-DE/apis/maps/documentation/javascript/v2/overlays.html
+function initialize() {
+  if (GBrowserIsCompatible()) {
+    map = new GMap2(document.getElementById("rheinsteig_karte"));
+    map.setCenter(new GLatLng(50.23173, 7.58813), 9);
+    map.addControl(new GLargeMapControl());
+    map.addMapType(G_PHYSICAL_MAP);
+    map.setMapType(G_PHYSICAL_MAP);
+    map.addControl(new GMapTypeControl());
+
+    $(rheinsteig).each(function(index,route) {
+      var startLat = route[2],
+          startLong = route[3],
+          endLat = route[5],
+          endLong = route[6],
+          fitness = route[9],
+          technics = route[10],
+          fun = route[11];
+
+      // Ich habe versucht die Linien per JavaScript auszublenden, scheinbar kann man die Linien-Elemente aber nicht referenzieren bzw. nicht modifizieren. Der einzige Code, der nachträgtlich noch die Opacity ändern kann funktioniert nur im Freifox und ist aufwändig: http://www.bdcc.co.uk/Gmaps/BdccGmapBits.htm
+      if (showFun == 'ja') {
+        funPolylines[index] = [];
+        funPolylines[index].polyline = new GPolyline([
+          new GLatLng(startLat,startLong),
+          new GLatLng(endLat,endLong)
+          ], funColor, boost(fun));
+        map.addOverlay(funPolylines[index].polyline);
+      }
+
+      if (showTechnics == "ja") {
+        technicsPolylines[index] = [];
+        technicsPolylines[index].polyline = new GPolyline([
+          new GLatLng(startLat,startLong),
+          new GLatLng(endLat,endLong)
+          ], technicsColor, boost(technics));
+        map.addOverlay(technicsPolylines[index].polyline);
+      }
+
+      if (showFitness == 'ja') {
+        fitnessPolylines[index] = [];
+        fitnessPolylines[index].polyline = new GPolyline([
+          new GLatLng(startLat,startLong),
+          new GLatLng(endLat,endLong)
+          ], fitnessColor, boost(fitness));
+        map.addOverlay(fitnessPolylines[index].polyline);
+      }
+    });
+  }
+}
+
+</script>
+
+<p>Diese Karte visualisiert die Wanderroute »<a href="http://www.rheinsteig.de/etappentourenplaner/">Rheinsteig</a>« anhand der Kriterien Erlebnis, Kondition und Technik auf einer Karte. Je breiter die Linie, desto "besser" ist der Abschnitt bewertet. <a href="?erlebnis=ja&amp;kondition=nein&amp;technik=ja">Erlebnis + Technik</a> zeigt also (vereinfacht gesagt) die interessantesten und leichtesten Routen :-).</p>
+<p>Erstellt von <a href="http://tobiasjordans.de">Tobias Jordans</a></p>
+<ul>
+  <li><a href="https://github.com/tordans/RheinsteigVisualizationMap/">GitHub-Projektseite</a> – Dort kann die Karte geforkt und weiter entwickelt werden
+  <li>Die Datenquelle für die drei Bewertungskriterien: <a href="http://www.rheinsteig.de/etappentourenplaner/siebengebirge/">Siebengebirge</a>, <a href="http://www.rheinsteig.de/etappentourenplaner/unteres-mittelrheintal/">Unteres Mittelrheintal</a>, <a href="http://www.rheinsteig.de/etappentourenplaner/oberes-mittelrheintal/">Oberes  Mittelrheintal</a>, <a href="http://www.rheinsteig.de/etappentourenplaner/rheingau/">Rheingau</a>
+  <li>Diese Daten habe in ein <a href="https://spreadsheets.google.com/ccc?pli=1&hl=de&hl=de&key=tiBlPIh__cY04XHsWbnyGWA&authkey=CJ3J0ZkE#gid=0">öffentliches GoogleSpreadsheet</a> überführt. Auf diesem Spreadsheet basiert die Karten-Visualisierung.
+  <li>Weitere Details stehen in den Kommentaren im Code
+</ul>
+
 </body>
 </html>
