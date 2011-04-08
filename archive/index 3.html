@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="charset=utf-8">
+<title>Visualisierung der Rheinsteig-Routen</title>
+
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="jquery.csv.js"></script>
+<script type="text/javascript">
+
+// Quelle: https://spreadsheets.google.com/pub?hl=de&hl=de&key=0Av1igPBLCZG2dGlCbFBJaF9fY1kwNFhIc1dibnlHV0E&single=true&gid=0&output=csv
+// COLUMNS: Routennummer,Start,Ziel,Dauer,Länge,Kondition ,Technik ,Erlebniswert ,Höhenprofil-Bild,Region,URL\n
+var rheinsteigCSV = '1,Bonn,Niederdollendorf,03:30 Std. ,"13,0",2,1,4,,Siebengebirge,http://www.rheinsteig.de/etappentourenplaner/siebengebirge/\n2,Niederdollendorf,Königswinter,03:00 Std.,9,3,2,4,,Siebengebirge\n3,Königswinter,Bad Honnef,04:00 Std.,"13,5",4,2,5,,Siebengebirge\n4,Bad Honnef (über Zuweg Jugendherberge),Unkel,03:00 Std.,"9,5",2,2,3,,Siebengebirge\n5,Unkel,Leubsdorf,04:30 Std.,14,4,3,5,http://www.rheinsteig.de/uploads/pics/profil-5.gif,Unteren Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/unteres-mittelrheintal/\n6,Leubsdorf,Rheinbrohl,04:30 Std. ,"14,5",3,3,4,http://www.rheinsteig.de/uploads/pics/profil-6.gif,Unteren Mittelrheintal\n7,Rheinbrohl,Leutesdorf,03:30 Std.,13,3,3,3,http://www.rheinsteig.de/uploads/pics/profil-7.gif,Unteren Mittelrheintal\n8,Leutesdorf,Rengsdorf,06:00 Std. ,19,5,2,4,http://www.rheinsteig.de/uploads/pics/profil-8.gif,Unteren Mittelrheintal\n9,Rengsdorf,Sayn,03:30 Std.,13,3,2,4,http://www.rheinsteig.de/uploads/pics/profil-9.gif,Unteren Mittelrheintal\n10,Sayn,Vallendar,04:00 Std.,13,3,2,3,http://www.rheinsteig.de/uploads/pics/profil-10.gif,Unteren Mittelrheintal\n11,Vallendar,Koblenz-Ehrenbreitstein,03:00 Std.,9,1,2,3,http://www.rheinsteig.de/uploads/pics/profil-11.gif,Oberes Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/oberes-mittelrheintal/\n12,Koblenz-Ehrenbreitstein,Niederlahnstein,04:30 Std.,"13,5",3,5,5,,Oberes Mittelrheintal\n13,Niederlahnstein,Braubach,03:00 Std.,"8,5",2,4,3,,Oberes Mittelrheintal\n14,Braubach,Osterspai,04:00 Std.,"11,5",3,3,4,,Oberes Mittelrheintal\n15,Osterspai,Kestert,05:30 Std.,17,5,4,5,,Oberes Mittelrheintal\n16,Kestert,St. Goarshausen,04:00 Std.,12,4,3,4,,Oberes Mittelrheintal\n17,St. Goarshausen,Kaub,07:00 Std.,22,6,4,6,,Oberes Mittelrheintal\n18,Kaub,Lorch,04:30 Std.,"13,5",3,2,4,,Oberes Mittelrheintal\n19,Lorch,Rüdesheim,06:30 Std.,20,4,3,5,,Oberes Mittelrheintal\n20,Rüdesheim,Johannisberg,04:00 Std.,13,4,3,4,,Rheingau,http://www.rheinsteig.de/etappentourenplaner/rheingau/\n21,Johannisberg,Kloster Eberbach,03:30 Std.,11,2,2,4,,Rheingau\n22,Kloster Eberbach,Schlangenbad,04:30 Std.,14,3,2,3,,Rheingau\n23,Schlangenbad,Wiesbaden-Biebrich,04:00 Std.,"16,5",4,2,3,,Rheingau';
+
+
+// Ein weiterer jQuery-CSV-Parser: http://www.bennadel.com/blog/1504-Ask-Ben-Parsing-CSV-Strings-With-Javascript-Exec-Regular-Expression-Command.htm
+
+// Quelle: http://plugins.jquery.com/project/csv
+// http://code.google.com/p/js-tables/wiki/CSV
+// http://www.s-anand.net/csv
+
+var rheinsteig = jQuery.csv()(rheinsteigCSV),
+    googleStaticMapBaseURL = "http://maps.google.com/maps/api/staticmap";
+    // imagePrototype = {
+    //   center: 'Bonn',
+    //   zoom: '11',
+    //   size: '500x500',
+    //   markerStyle: 'size:tiny',
+    //   maptype: 'terrain',
+    //   sensor: 'false',
+    //   path: '',
+    //   fitnessColor: 'red',
+    //   technicsColor: 'blue',
+    //   funColor: 'green'
+    // }
+
+function boost(int) {
+  return int*int;
+}
+
+$(document).ready( function() {
+
+$(rheinsteig).each(function(index,route) {
+
+  var start = route[1],
+      end = route[2],
+      fitness = boost(route[5]),
+      technics = boost(route[6]),
+      fun = boost(route[7]),
+      fitnessPath = "&path=color:green|weight:"+fitness+"|"+start+"|"+end,
+      technicsPath = "&path=color:blue|weight:"+technics+"|"+start+"|"+end,
+      funPath = "&path=color:red|weight:"+fun+"|"+start+"|"+end,
+      paths = fitnessPath + technicsPath + funPath,
+      staticParams = '&zoom=9&size=300x300&maptype=terrain&sensor=false';
+
+  var img = '<img src="'+googleStaticMapBaseURL+'?center='+start+','+end+paths+staticParams+'" />';
+
+  // console.log(img);
+
+  $('#maps').append(img);
+});
+
+});
+
+</script>
+</head>
+<body>
+
+<!-- <img src="http://maps.google.com/maps/api/staticmap?center=Bonn,Niederdollendorf&zoom=11&size=500x400&markers=size:tiny|Bonn&markers=size:tiny|Niederdollendorf\&maptype=terrain&sensor=false&path=color:yellow|weight:24|Bonn|Niederdollendorf&path=color:orange|weight:6|Bonn|Niederdollendorf&path=color:red|weight:12|Bonn|Niederdollendorf"> -->
+
+<div id="maps">
+</div>
+
+</body>
+</html>
