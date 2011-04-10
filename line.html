@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>Visualisierung der Rheinsteig-Routen</title>
+
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/jquery.csv.js"></script>
+<script type="text/javascript" src="js/jquery.getParams.js"></script>
+
+<style type="text/css">
+  body {
+    font-family: sans-serif;
+  }
+  #rheinsteig_line {
+    float: left;
+  }
+  #rheinsteig_calcline {
+    float: left;
+    margin-left: 50px;
+    border-left: 1px solid silver;
+    list-style: none;
+  }
+  .rheinsteig li {
+    cursor: pointer;
+  }
+  .rheinsteig span {
+    display: inline-block;
+  }
+  #info {
+    position: absolute;
+    right: 10px;
+    margin-top: 10px;
+    width: 390px;
+    background-color: #ccc;
+    padding: 10px;
+  }
+  #infoStars {
+    background-color: #3077AB;
+    padding: 10px;
+  }
+  #infoStars span {
+    display: inline-block;
+    width: 120px;
+  }
+  #infoStars p {
+    margin: 0 4px 0 0;
+  }
+  #infoStars .active {
+    font-weight: bold;
+    color: White;
+  }
+  #navigation {
+    border-bottom: 1px solid black;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+</style>
+
+</head>
+<body>
+
+<div id="navigation">
+  Ansicht wechseln:
+  <a href="index.html">auf einer Karte anzeigen</a>
+</div>
+
+<div id="info">
+  <div id="infoGraph"></div>
+  <div id="infoStars"></div>
+  <h1 id="infoRoute"></h1>
+  <h2 id="infoDistance"></h2>
+  <p><small></small></p>
+</div>
+
+<ol id="rheinsteig_line" class="rheinsteig">
+</ol>
+
+<ol id="rheinsteig_calcline" class="rheinsteig">
+</ol>
+
+<br clear='both' />
+
+<script type="text/javascript">
+
+// Spaltenbeschriftung:
+// Routennummer,Start,Start_Lat,Start_Long,Ziel,Ziel_Lat,Ziel_Long,Dauer,Länge (km),Kondition ,Technik ,Erlebniswert ,Höhenprofil-Bild,Region,URL\n
+var rheinsteigCSV = '1,Bonn,50.73270,7.09631,Niederdollendorf,50.69517,7.18107,03:30 Std. ,13,2,1,4,,Siebengebirge,http://www.rheinsteig.de/etappentourenplaner/siebengebirge/\n2,Niederdollendorf,50.69517,7.18107,Königswinter,50.67342,7.19472,03:00 Std.,9,3,2,4,,Siebengebirge\n3,Königswinter,50.67342,7.19472,Bad Honnef,50.64540,7.22583,04:00 Std.,"13,5",4,2,5,,Siebengebirge\n4,Bad Honnef [1],50.64540,7.22583,Unkel,50.59644,7.21886,03:00 Std.,"9,5",2,2,3,,Siebengebirge\n5,Unkel,50.59644,7.21886,Leubsdorf,50.54605,7.28771,04:30 Std.,14,4,3,5,http://www.rheinsteig.de/uploads/pics/profil-5.gif,Unteren Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/unteres-mittelrheintal/\n6,Leubsdorf,50.54605,7.28771,Rheinbrohl,50.49555,7.33486,04:30 Std. ,"14,5",3,3,4,http://www.rheinsteig.de/uploads/pics/profil-6.gif,Unteren Mittelrheintal\n7,Rheinbrohl,50.49555,7.33486,Leutesdorf,50.45331,7.38623,03:30 Std.,13,3,3,3,http://www.rheinsteig.de/uploads/pics/profil-7.gif,Unteren Mittelrheintal\n8,Leutesdorf,50.45331,7.38623,Rengsdorf,50.50289,7.49421,06:00 Std. ,19,5,2,4,http://www.rheinsteig.de/uploads/pics/profil-8.gif,Unteren Mittelrheintal\n9,Rengsdorf,50.50289,7.49421,Sayn,50.43819,7.57622,03:30 Std.,13,3,2,4,http://www.rheinsteig.de/uploads/pics/profil-9.gif,Unteren Mittelrheintal\n10,Sayn,50.43819,7.57622,Vallendar,50.39976,7.61755,04:00 Std.,13,3,2,3,http://www.rheinsteig.de/uploads/pics/profil-10.gif,Unteren Mittelrheintal\n11,Vallendar,50.39976,7.61755,Koblenz-Ehrenbreitstein,50.36011,7.61669,03:00 Std.,9,1,2,3,http://www.rheinsteig.de/uploads/pics/profil-11.gif,Oberes Mittelrheintal,http://www.rheinsteig.de/etappentourenplaner/oberes-mittelrheintal/\n12,Koblenz-Ehrenbreitstein,50.36011,7.61669,Niederlahnstein,50.31679,7.59953,04:30 Std.,"13,5",3,5,5,,Oberes Mittelrheintal\n13, Niederlahnstein,50.31679,7.59953,Braubach,50.27478,7.64965,03:00 Std.,"8,5",2,4,3,,Oberes Mittelrheintal\n14, Braubach,50.27478,7.64965,Osterspai,50.24488,7.61873,04:00 Std.,"11,5",3,3,4,,Oberes Mittelrheintal\n15, Osterspai,50.24488,7.61873,Kestert,50.18738,7.64796,05:30 Std.,17,5,4,5,,Oberes Mittelrheintal\n16, Kestert,50.18738,7.64796,St. Goarshausen,50.15537,7.71498,04:00 Std.,12,4,3,4,,Oberes Mittelrheintal\n17, St. Goarshausen,50.15537,7.71498,Kaub,50.08802,7.76230,07:00 Std.,22,6,4,6,,Oberes Mittelrheintal\n18, Kaub,50.08802,7.76230,Lorch,50.04700,7.80235,04:30 Std.,"13,5",3,2,4,,Oberes Mittelrheintal\n19, Lorch,50.04700,7.80235,Rüdesheim,49.97891,7.92639,06:30 Std.,20,4,3,5,,Oberes Mittelrheintal\n20, Rüdesheim,49.97891,7.92639,Johannisberg,49.98291,7.98414,04:00 Std.,13,4,3,4,,Rheingau,http://www.rheinsteig.de/etappentourenplaner/rheingau/\n21, Johannisberg,49.98291,7.98414,Kloster Eberbach,50.00972,8.06980,03:30 Std.,11,2,2,4,,Rheingau\n22, Kloster Eberbach,50.00972,8.06980,Schlangenbad,50.09422,8.10315,04:30 Std.,14,3,2,3,,Rheingau\n23, Schlangenbad,50.09422,8.10315,Wiesbaden-Biebrich,50.04485,8.24105,04:00 Std.,"16,5",4,2,3,,Rheingau';
+
+
+var rheinsteig = jQuery.csv()(rheinsteigCSV),
+    map,
+    funPolylines = [],
+    technicsPolylines = [],
+    fitnessPolylines = [],
+    showFun = $.getURLParam('erlebnis'),
+    showTechnics = $.getURLParam('technik'),
+    showFitness = $.getURLParam('kondition'),
+    funColor = "darkorange",
+    technicsColor = "orange",
+    fitnessColor = "navy",
+    calcColor = "black",
+    marginLeft = 100;
+
+// Default: Alle anzeigen.
+if(!showFun && !showTechnics && !showFitness) {
+  showFun = showTechnics = showFitness = "ja";
+}
+
+// Linien-Dicke anpassen basierend auf der Bewertung
+function boost(int) {
+  return int*int*2;
+}
+
+$(document).ready( function() {
+
+  $(rheinsteig).each(function(index,route) {
+    var routeID = route[0],
+        startName = route[1],
+        startLat = route[2],
+        startLong = route[3],
+        endName = route[4],
+        endLat = route[5],
+        endLong = route[6],
+        time = route[7],
+        distance = parseInt(route[8]),
+        height = distance*2,
+        fitness = route[9],
+        technics = route[10],
+        fun = route[11],
+        regionName = route[13],
+        sourceURL = function sourceURL() {
+          if(regionName=="Siebengebirge")
+            return "http://www.rheinsteig.de/etappentourenplaner/siebengebirge/";
+          if (regionName=="Unteren Mittelrheintal")
+            return "http://www.rheinsteig.de/etappentourenplaner/unteres-mittelrheintal/";
+          if (regionName=="Oberes Mittelrheintal")
+            return "http://www.rheinsteig.de/etappentourenplaner/oberes-mittelrheintal/";
+          if (regionName=="Rheingau")
+            return "http://www.rheinsteig.de/etappentourenplaner/rheingau/";
+          console.error(regionName);
+        };
+
+    // show the first 2-direction-graph
+    $('#rheinsteig_line').append('<li class="route'+routeID+'"></li>');
+    $('#rheinsteig_line .route'+routeID)
+      .append('<span class="fitness" style="width: '+boost(fitness)+'px; height: '+height+'px; background-color: '+fitnessColor+'; margin-left: '+(marginLeft-boost(fitness))+'px;"></span>')
+      .append('<span class="fun" style="width: '+boost(fun)+'px; height: '+height+'px; background-color: '+funColor+';"></span>')
+      .append('<span class="technics" style="width: '+boost(technics)+'px; height: '+height+'px; background-color: '+technicsColor+';"></span>');
+
+    // show the second calculated graph
+    $('#rheinsteig_calcline').append('<li class="route'+routeID+'"></li>');
+    $('#rheinsteig_calcline .route'+routeID).append('<span style="width: '+(technics+fun-fitness)*2+'px; height: '+height+'px; background-color: '+calcColor+';"></span>');
+
+    // Display the detail-information on the right
+    $('.rheinsteig .route'+routeID).hover( function() {
+      $('#infoRoute').text(startName+'–'+endName);
+      $('#infoDistance').text('~'+distance+' km / ~'+time);
+      $('#info p small, #infoGraph, #infoStars').html('');
+      $('#info p small').append('<a href="'+sourceURL()+'">'+regionName+'</a>');
+      $('#infoGraph').append('<img src="http://www.rheinsteig.de/uploads/pics/profil-'+routeID+'.gif" />');
+      $('#infoStars')
+        .append('<p class="fitness"><span>Kondition: '+fitness+'</span> <img src="http://www.rheinsteig.de/fileadmin/templates/global_gfx/etappen-routenplaner/'+fitness+'-sterne.gif" />')
+        .append('<p class="technics"><span>Technik: '+technics+'</span> <img src="http://www.rheinsteig.de/fileadmin/templates/global_gfx/etappen-routenplaner/'+technics+'-sterne.gif" />')
+        .append('<p class="fun"><span>Erlenbiswert: '+fun+'</span> <img src="http://www.rheinsteig.de/fileadmin/templates/global_gfx/etappen-routenplaner/'+fun+'-sterne.gif" />');
+    },
+    function(){
+    });
+
+    $('#rheinsteig_line span.fitness').live('mouseenter', function() {
+      $('p.fitness span').addClass('active');
+    });
+    $('.rheinsteig span.fitness').live('mouseleave', function() {
+      $('p.fitness span').removeClass('active');
+    });
+    $('.rheinsteig span.technics').live('mouseenter', function() {
+      $('p.technics span').addClass('active');
+    });
+    $('.rheinsteig span.technics').live('mouseleave', function() {
+      $('p.technics span').removeClass('active');
+    });
+    $('.rheinsteig span.fun').live('mouseenter', function() {
+      $('p.fun span').addClass('active');
+    });
+    $('.rheinsteig span.fun').live('mouseleave', function() {
+      $('p.fun span').removeClass('active');
+    });
+
+  });
+});
+
+</script>
+
+<p>Diese Graphen visualisiert die Wanderroute »<a href="http://www.rheinsteig.de/etappentourenplaner/">Rheinsteig</a>« anhand der Kriterien Erlebnis, Kondition und Technik. Je breiter der Balken, desto "besser" ist der Abschnitt bewertet. Die Höhe gibt die Distanz an.</p>
+<p>Der zweite Graph versucht die interessantesten Routen herauszustellen: Hoher Erlebniswert und Technik aber wenig Kondition nötig.</p>
+<p>Erstellt von <a href="http://tobiasjordans.de">Tobias Jordans</a></p>
+<p><a href="http://tordans.github.com/RheinsteigVisualizationMap/">Mehr Informationen…</a></p>
+
+</body>
+</html>

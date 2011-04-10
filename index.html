@@ -17,29 +17,63 @@
     margin-bottom: 10px;
   }
   .legende a {
-    margin: 2px 3px;
+    margin: 2px 3px;;
     display: inline-block;
-    border: 2px solid #ccc;
+    background-color: #ccc;
+    color: White;
+    text-decoration: none;
   }
   .legende a:hover {
-    border-color: black;
+    background-color: black;
+    text-decoration: underline;
   }
-  .legende a, .legende span {
-    padding: 3px 0px;
+  .legende span {
+    margin: 2px;
+    padding: 3px 5px;
+    display: inline-block;
+  }
+  .legende a {
     -webkit-border-radius:  7px;
     -moz-border-radius:     7px;
     border-radius:          7px;
   }
-  .legende span {
-    padding: 3px 2px;
+  .legende span:first-child {
+    -webkit-border-top-left-radius:     7px;
+    -webkit-border-bottom-left-radius:  7px;
+    -moz-border-radius-topleft:         7px;
+    -moz-border-radius-bottomleft:      7px;
+    border-top-left-radius:             7px;
+    border-bottom-left-radius:          7px;
+  }
+  .legende span:last-child {
+    -webkit-border-top-right-radius:    7px;
+    -webkit-border-bottom-right-radius: 7px;
+    -moz-border-radius-topright:        7px;
+    -moz-border-radius-bottomright:     7px;
+    border-top-right-radius:            7px;
+    border-bottom-right-radius:         7px;
+  }
+  #navigation {
+    border-bottom: 1px solid black;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
   }
 </style>
 
 </head>
 <body onload="initialize()" onunload="GUnload()">
 
+<div id="navigation">
+  Ansicht wechseln:
+  <a href="line.html">als Graph anzeigen</a>
+</div>
+
 <div class="legende">
   Anzeigen:
+  <a href="?erlebnis=nein&amp;kondition=nein&amp;technik=nein&amp;calc=ja"
+     title="1.2*(fun+technics)-(9*fitness)+1">
+    <span class="calc">Erlebnis+Technik-Kondition</span>
+  </a>
   <a href="?erlebnis=ja&amp;kondition=nein&amp;technik=nein">
     <span class="fun">Erlebnis</span>
   </a>
@@ -89,23 +123,28 @@ var rheinsteig = jQuery.csv()(rheinsteigCSV),
     funPolylines = [],
     technicsPolylines = [],
     fitnessPolylines = [],
+    calcPolylines = [],
     // thx @ http://bueltge.de/parameter-aus-url-auslesen-mit-jquery/464/
     showFun = $.getURLParam('erlebnis'),
     showTechnics = $.getURLParam('technik'),
     showFitness = $.getURLParam('kondition'),
+    showCalc = $.getURLParam('calc'),
     funColor = "#ff0000",
     technicsColor = "green",
-    fitnessColor = "navy";
+    fitnessColor = "navy",
+    calcColor = "black";
 
 // Default: Alle anzeigen.
 if(!showFun && !showTechnics && !showFitness) {
   showFun = showTechnics = showFitness = "ja";
+  showCalc = "nein";
 }
 
 // Farbgebung für Legende
 $('span.fun').css('background-color', funColor);
 $('span.technics').css('background-color', technicsColor);
 $('span.fitness').css('background-color', fitnessColor);
+$('span.calc').css('background-color', calcColor);
 
 // Linien-Dicke anpassen basierend auf der Bewertung
 function boost(int) {
@@ -159,6 +198,15 @@ function initialize() {
           new GLatLng(endLat,endLong)
           ], fitnessColor, boost(fitness));
         map.addOverlay(fitnessPolylines[index].polyline);
+      }
+
+      if (showCalc == 'ja') {
+        calcPolylines[index] = [];
+        calcPolylines[index].polyline = new GPolyline([
+          new GLatLng(startLat,startLong),
+          new GLatLng(endLat,endLong)
+          ], calcColor, (1.2*(fun+technics)-(9*fitness)+1));
+        map.addOverlay(calcPolylines[index].polyline);
       }
     });
   }
